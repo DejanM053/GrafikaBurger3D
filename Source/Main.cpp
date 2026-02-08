@@ -35,6 +35,8 @@ struct Ingredient {
     IngredientType type;
     std::string name;
     bool placed;
+    float minHeight;        // Minimum Y position this ingredient can go
+    float stackSnapHeight;  // Height offset when stacking on plate
 };
 
 const double TARGET_FPS = 75.0;
@@ -140,31 +142,6 @@ void error_callback(int error, const char* description)
     fprintf(stderr, "GLFW Error: %s\n", description);
 }
 
-// Pomocna funkcija za crtanje krastavaca (posto su 4 dela) ili obicnog objekta
-void DrawIngredientVisuals(unsigned int shader, unsigned int VAO, Ingredient& ing, Camera& camera, float aspectRatio) {
-    int rounding = 0;
-    if (ing.name == "BunBot") rounding = 1;
-    if (ing.name == "BunTop") rounding = 2;
-
-    if (ing.name == "Pickles") {
-        // Iseckani krastavcici: Crtamo 4 mala dela umesto jednog velikog
-        float totalWidth = ing.obj.w;
-        float partWidth = totalWidth / 4.0f;
-        float startX = ing.obj.x - (totalWidth / 2.0f) + (partWidth / 2.0f);
-
-        for (int k = 0; k < 4; k++) {
-            GameObject slice = ing.obj;
-            slice.w = partWidth * 0.8f; // Malo razmaka izmedju njih
-            slice.x = startX + k * partWidth;
-            RenderObject(shader, VAO, slice, camera, aspectRatio, 0);
-        }
-    }
-    else {
-        // Obicno crtanje za sve ostalo
-        RenderObject(shader, VAO, ing.obj, camera, aspectRatio, rounding);
-    }
-}
-
 int main()
 {
     glfwSetErrorCallback(error_callback);
@@ -260,7 +237,7 @@ int main()
     grill.modelVAO = grillVAO;
     grill.modelPath = "Models/GrillTop.obj";
     grill.x = 0.0f;
-    grill.y = 0.0f;
+    grill.y = -0.5f;  // LOWERED from 0.0f to match table height
     grill.z = 0.0f;
     grill.w = 0.2f;  // Visual model scale
     grill.h = 0.2f;
@@ -282,7 +259,7 @@ int main()
     detailedGrill.modelVAO = detailedGrillVAO;
     detailedGrill.modelPath = "Models/Grill.obj";
     detailedGrill.x = 0.0f;
-    detailedGrill.y = 0.0f;
+    detailedGrill.y = -0.5f;  // LOWERED from 0.0f to match table height
     detailedGrill.z = 0.0f;
     detailedGrill.w = 0.2f;
     detailedGrill.h = 0.2f;
@@ -296,7 +273,7 @@ int main()
     cookingZone.is3DModel = false;
     cookingZone.isVisible = false;  // Invisible collision box
     cookingZone.x = 0.0f;
-    cookingZone.y = 0.0f;  // Same Y as grill center
+    cookingZone.y = -0.18f;  // LOWERED from 0.0f to match grill height
     cookingZone.z = 0.0f;
     cookingZone.w = 1.1f;  // Wider cooking area (adjust this)
     cookingZone.h = 0.01f;  // Taller cooking area (adjust this)
@@ -328,41 +305,156 @@ int main()
 
     float cookingProgress = 0.0f;
 
+    // 3D Table model (visible in COOKING and ASSEMBLY states)
+    unsigned int tableVAO = loadOBJModel("Models/Table.obj", modelCache);
     GameObject table;
-    table.y = -0.7f; table.w = 2.0f; table.h = 0.8f;
-    table.r = 0.6f; table.g = 0.4f; table.b = 0.2f;
+    table.is3DModel = true;
+    table.modelVAO = tableVAO;
+    table.modelPath = "Models/Table.obj";
+    table.x = 0.0f;
+    table.y = -0.5f;  // LOWERED from 0.0f to match ingredient export height
+    table.z = 0.0f;
+    table.w = 0.2f;
+    table.h = 0.2f;
+    table.d = 0.2f;
+    table.r = 0.6f;  // Brown wood color
+    table.g = 0.4f;
+    table.b = 0.2f;
 
+    // Floor collision object (invisible)
+    GameObject floor;
+    floor.is3DModel = false;
+    floor.isVisible = false;  // Set back to false
+    floor.x = 0.0f;
+    floor.y = -1.5f;  // Floor level
+    floor.z = 0.0f;
+    floor.w = 10.0f;  // Large area
+    floor.h = 0.1f;   // Thin
+    floor.d = 10.0f;
+
+    // 3D Plate model for ASSEMBLY state
+    unsigned int plateVAO = loadOBJModel("Models/Plate.obj", modelCache);
     GameObject plate;
-    plate.y = -0.6f; plate.w = 0.6f; plate.h = 0.1f;
-    plate.r = 1.0f; plate.g = 1.0f; plate.b = 1.0f;
+    plate.is3DModel = true;
+    plate.modelVAO = plateVAO;
+    plate.modelPath = "Models/Plate.obj";
+    plate.x = 0.0f;
+    plate.y = -0.42f;  // LOWERED from 0.0f to match table
+    plate.z = 0.0f;
+    plate.w = 0.3f;
+    plate.h = 1.0f;
+    plate.d = 0.3f;
+    plate.r = 1.0f;  // White
+    plate.g = 1.0f;
+    plate.b = 1.0f;
+
+    // Collision zones for splat detection (adjust these manually)
+    GameObject plateZone;
+    plateZone.is3DModel = false;
+    plateZone.isVisible = false;
+    plateZone.x = 0.0f;
+    plateZone.y = -0.45f;   // Plate surface level (ADJUST)
+    plateZone.z = 0.0f;
+    plateZone.w = 0.5f;   // Plate width (ADJUST)
+    plateZone.h = 0.1f;
+    plateZone.d = 0.5f;   // Plate depth (ADJUST)
+
+    GameObject tableZone;
+    tableZone.is3DModel = false;
+    tableZone.isVisible = false;
+    tableZone.x = 0.0f;
+    tableZone.y = -0.5f;  // Table surface level (ADJUST)
+    tableZone.z = 0.0f;
+    tableZone.w = 2.0f;   // Table width (ADJUST)
+    tableZone.h = 0.2f;
+    tableZone.d = 2.0f;   // Table depth (ADJUST)
+
+    GameObject floorZone;
+    floorZone.is3DModel = false;
+    floorZone.isVisible = false;
+    floorZone.x = 0.0f;
+    floorZone.y = -1.5f;  // Floor level (ADJUST)
+    floorZone.z = 0.0f;
+    floorZone.w = 10.0f;
+    floorZone.h = 0.2f;
+    floorZone.d = 10.0f;
 
     std::vector<Ingredient> ingredients;
-    auto addIng = [&](std::string name, float r, float g, float b, IngredientType type = SOLID) {
+    
+    // Load 3D models for all ingredients
+    unsigned int bunBotVAO = loadOBJModel("Models/BottomBun.obj", modelCache);
+    unsigned int pattyModelVAO = loadOBJModel("Models/Patty.obj", modelCache);
+    unsigned int ketchupBottleVAO = loadOBJModel("Models/KetchupBottle.obj", modelCache);
+    unsigned int mustardBottleVAO = loadOBJModel("Models/MustardBottle.obj", modelCache);
+    unsigned int picklesVAO = loadOBJModel("Models/Pickles.obj", modelCache);
+    unsigned int onionVAO = loadOBJModel("Models/Onion.obj", modelCache);
+    unsigned int lettuceVAO = loadOBJModel("Models/Lettuce.obj", modelCache);
+    unsigned int cheeseVAO = loadOBJModel("Models/Cheese.obj", modelCache);
+    unsigned int tomatoVAO = loadOBJModel("Models/Tomato.obj", modelCache);
+    unsigned int bunTopVAO = loadOBJModel("Models/TopBun.obj", modelCache);
+    
+    // Load actual ketchup/mustard models (not bottles - these go ON the burger)
+    unsigned int ketchupVAO = loadOBJModel("Models/Ketchup.obj", modelCache);
+    unsigned int mustardVAO = loadOBJModel("Models/Mustard.obj", modelCache);
+
+    // Helper function to create 3D ingredient
+    auto addIngredient3D = [&](std::string name, unsigned int vao, std::string modelPath,
+                               float r, float g, float b, IngredientType type,
+                               float minHeight, float stackHeight) {
         Ingredient ing;
         ing.name = name;
-        ing.obj.w = (type == SAUCE) ? 0.1f : 0.3f;
-        ing.obj.h = (type == SAUCE) ? 0.3f : 0.05f;
-        ing.obj.r = r; ing.obj.g = g; ing.obj.b = b;
-        ing.obj.y = 0.5f;
         ing.type = type;
         ing.placed = false;
+        ing.minHeight = minHeight;         // ADJUST: Minimum Y this ingredient can go
+        ing.stackSnapHeight = stackHeight; // ADJUST: Height offset when stacking
+        
+        ing.obj.is3DModel = true;
+        ing.obj.modelVAO = vao;
+        ing.obj.modelPath = modelPath;
+        ing.obj.x = 0.0f;
+        ing.obj.y = 0.5f;  // Start lower - was 1.5f
+        ing.obj.z = 0.0f;
+        ing.obj.w = 0.2f;  // Scale
+        ing.obj.h = 0.2f;
+        ing.obj.d = 0.2f;
+        ing.obj.r = r;
+        ing.obj.g = g;
+        ing.obj.b = b;
+        
         ingredients.push_back(ing);
-        };
-
-    addIng("BunBot", 0.8f, 0.6f, 0.2f);
-    addIng("Patty", 0.5f, 0.25f, 0.0f);
-    addIng("Ketchup", 1.0f, 0.0f, 0.0f, SAUCE);
-    addIng("Mustard", 1.0f, 1.0f, 0.0f, SAUCE);
-    addIng("Pickles", 0.0f, 0.5f, 0.0f);
-    addIng("Onion", 0.9f, 0.9f, 0.9f);
-    addIng("Lettuce", 0.0f, 1.0f, 0.0f);
-    addIng("Cheese", 1.0f, 0.8f, 0.0f);
-    addIng("Tomato", 1.0f, 0.0f, 0.0f);
-    addIng("BunTop", 0.8f, 0.6f, 0.2f);
+    };
+    
+    // Add all ingredients with their 3D models
+    // Format: name, VAO, modelPath, r, g, b, type, minHeight (ADJUST), stackHeight (ADJUST)
+    //addIngredient3D("BunBot", bunBotVAO, "Models/BottomBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -2.0f, 0.04f);
+    //addIngredient3D("Patty", pattyModelVAO, "Models/Patty.obj", 0.5f, 0.25f, 0.0f, SOLID, -2.0f, 0.015f);
+    //addIngredient3D("Ketchup", ketchupBottleVAO, "Models/KetchupBottle.obj", 0.8f, 0.1f, 0.1f, SAUCE, -2.0f, 0.0f);
+    //addIngredient3D("Mustard", mustardBottleVAO, "Models/MustardBottle.obj", 0.9f, 0.8f, 0.1f, SAUCE, -2.0f, 0.0f);
+    //addIngredient3D("Pickles", picklesVAO, "Models/Pickles.obj", 0.2f, 0.6f, 0.2f, SOLID, -2.0f, 0.01f);
+    //addIngredient3D("Onion", onionVAO, "Models/Onion.obj", 0.95f, 0.9f, 0.85f, SOLID, -2.0f, 0.01f);
+    //addIngredient3D("Lettuce", lettuceVAO, "Models/Lettuce.obj", 0.3f, 0.8f, 0.3f, SOLID, -2.0f, 0.015f);
+    //addIngredient3D("Cheese", cheeseVAO, "Models/Cheese.obj", 1.0f, 0.8f, 0.2f, SOLID, -2.0f, 0.005f);
+    //addIngredient3D("Tomato", tomatoVAO, "Models/Tomato.obj", 0.9f, 0.2f, 0.2f, SOLID, -2.0f, 0.015f);
+    //addIngredient3D("BunTop", bunTopVAO, "Models/TopBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -2.0f, 0.04f);
+    addIngredient3D("BunBot", bunBotVAO, "Models/BottomBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -2.0f, 0.00f);
+    addIngredient3D("Patty", pattyModelVAO, "Models/Patty.obj", 0.5f, 0.25f, 0.0f, SOLID, -2.0f, 0.00f);
+    addIngredient3D("Ketchup", ketchupBottleVAO, "Models/KetchupBottle.obj", 0.8f, 0.1f, 0.1f, SAUCE, -2.0f, 0.0f);
+    addIngredient3D("Mustard", mustardBottleVAO, "Models/MustardBottle.obj", 0.9f, 0.8f, 0.1f, SAUCE, -2.0f, 0.0f);
+    addIngredient3D("Pickles", picklesVAO, "Models/Pickles.obj", 0.2f, 0.6f, 0.2f, SOLID, -2.0f, 0.0f);
+    addIngredient3D("Onion", onionVAO, "Models/Onion.obj", 0.95f, 0.9f, 0.85f, SOLID, -2.0f, 0.0f);
+    addIngredient3D("Lettuce", lettuceVAO, "Models/Lettuce.obj", 0.3f, 0.8f, 0.3f, SOLID, -2.0f, 0.0f);
+    addIngredient3D("Cheese", cheeseVAO, "Models/Cheese.obj", 1.0f, 0.8f, 0.2f, SOLID, -2.0f, 0.00f);
+    addIngredient3D("Tomato", tomatoVAO, "Models/Tomato.obj", 0.9f, 0.2f, 0.2f, SOLID, -2.0f, 0.0f);
+    addIngredient3D("BunTop", bunTopVAO, "Models/TopBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -2.0f, 0.0f);
 
     int currentIngredientIndex = 0;
     std::vector<GameObject> puddles;
+    
+    // Load splat textures for sauce failures
+    unsigned int ketchupSplatTex = loadImageToTexture("Resources/Textures/KetchupSplat.png");
+    unsigned int mustardSplatTex = loadImageToTexture("Resources/Textures/MustardSplat.png");
 
+    // End message for FINISHED state
     GameObject endMessage;
     endMessage.w = 0.8f; endMessage.h = 0.4f;
     endMessage.useTexture = true;
@@ -370,6 +462,7 @@ int main()
     if (msgTex) endMessage.textureId = msgTex;
     else { endMessage.r = 0; endMessage.g = 0; endMessage.b = 1; endMessage.useTexture = false; }
 
+// Main game loop
     double lastTime = glfwGetTime();
     bool spacePressedLastFrame = false;
 
@@ -455,7 +548,7 @@ int main()
                 glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
                 rawPatty.y -= speed;
                 // Don't let patty go below grill
-                if (rawPatty.y < 0.0f) rawPatty.y = 0.0f;
+                if (rawPatty.y < -1.0f) rawPatty.y = -1.0f;
             }
 
             // Check 3D collision with invisible cooking zone (not the visible grill)
@@ -471,6 +564,7 @@ int main()
             }
 
             // Render 3D grill and patty
+            RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
             RenderObject3D(shaderProgram, VAO, detailedGrill, camera, aspectRatio, modelCache);
             RenderObject3D(shaderProgram, VAO, grill, camera, aspectRatio, modelCache);
             RenderObject3D(shaderProgram, VAO, rawPatty, camera, aspectRatio, modelCache);
@@ -489,88 +583,198 @@ int main()
             if (cookingProgress >= 1.0f) currentState = ASSEMBLY;
         }
         else if (currentState == ASSEMBLY) {
-            RenderObject(shaderProgram, VAO, table, camera, aspectRatio);
-            RenderObject(shaderProgram, VAO, plate, camera, aspectRatio);
+            // Render 3D table and plate
+            RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, plate, camera, aspectRatio, modelCache);
 
+            // Render 2D splat puddles on surfaces
+            glDisable(GL_DEPTH_TEST);
             for (auto& p : puddles) RenderObject(shaderProgram, VAO, p, camera, aspectRatio);
+            glEnable(GL_DEPTH_TEST);
 
-            // Crtanje naslaganih
-            float stackHeight = plate.y + 0.05f;
+            // Calculate current stack height for placement
+            float stackHeight = plateZone.y;  // Start VERY close to plate (was 0.05f)
             for (int i = 0; i < currentIngredientIndex; i++) {
-                if (ingredients[i].type == SOLID) {
-                    Ingredient tempIng = ingredients[i]; // Kopija za modifikaciju pozicije
-                    tempIng.obj.y = stackHeight;
-                    tempIng.obj.x = plate.x;
-                    stackHeight += 0.06f;
-
-                    // Pozivamo helper funkciju koja zna da nacrta krastavce ili zemicke
-                    DrawIngredientVisuals(shaderProgram, VAO, tempIng, camera, aspectRatio);
-                }
+                stackHeight += ingredients[i].stackSnapHeight;
             }
 
+            // Render stacked ingredients
+            for (int i = 0; i < currentIngredientIndex; i++) {
+                GameObject stackedObj = ingredients[i].obj;
+                stackedObj.x = plate.x;
+                stackedObj.z = plate.z;
+                
+                // Calculate Y position for this stacked ingredient
+                float stackY = plateZone.y + 0.02f;  // Start VERY close to plate (was 0.05f)
+                for (int j = 0; j <= i; j++) {
+                    if (j == i) {
+                        stackedObj.y = stackY;
+                    } else {
+                        stackY += ingredients[j].stackSnapHeight;
+                    }
+                }
+                
+                RenderObject3D(shaderProgram, VAO, stackedObj, camera, aspectRatio, modelCache);
+            }
+
+            // Handle current ingredient being placed
             if (currentIngredientIndex < ingredients.size()) {
                 Ingredient& curr = ingredients[currentIngredientIndex];
 
-                float speed = 1.0f * deltaTime;
-                if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) curr.obj.y += speed;
-                if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) curr.obj.y -= speed;
-                if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) curr.obj.x -= speed;
-                if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) curr.obj.x += speed;
-
-                // Crtamo trenutni sastojak (sa krastavac/zemicka logikom)
-                DrawIngredientVisuals(shaderProgram, VAO, curr, camera, aspectRatio);
-
-                if (curr.type == SAUCE) {
-                    bool spacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
-                    if (spacePressed && !spacePressedLastFrame) {
-
-                        float plateLeft = plate.x - plate.w / 2.0f;
-                        float plateRight = plate.x + plate.w / 2.0f;
-
-                        // Proveravamo da li je centar sosa unutar X granica tanjira
-                        bool isAlignedWithPlate = (curr.obj.x > plateLeft && curr.obj.x < plateRight);
-
-                        if (isAlignedWithPlate) {
-                            // Uspeh
-                            currentIngredientIndex++;
-                        }
-                        else {
-                            // Barica na stolu
-                            GameObject puddle;
-                            puddle.x = curr.obj.x;
-                            puddle.y = -0.65f;
-                            puddle.w = 0.15f; puddle.h = 0.1f;
-                            puddle.r = curr.obj.r; puddle.g = curr.obj.g; puddle.b = curr.obj.b;
-                            puddles.push_back(puddle);
-                        }
-                    }
-                    spacePressedLastFrame = spacePressed;
+                // 3D movement controls
+                float speed = 1.5f * deltaTime;
+                if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) curr.obj.z -= speed;  // Forward
+                if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) curr.obj.z += speed;  // Backward
+                if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) curr.obj.x -= speed;  // Left
+                if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) curr.obj.x += speed;  // Right
+                
+                // SPACE to move up, SHIFT to move down
+                if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) curr.obj.y += speed;
+                if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || 
+                    glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
+                    curr.obj.y -= speed;
+                    // Don't let ingredient go below its minimum height
+                    if (curr.obj.y < curr.minHeight) curr.obj.y = curr.minHeight;
                 }
-                else { // SOLID
-                    float dist = sqrt(pow(curr.obj.x - plate.x, 2) + pow(curr.obj.y - stackHeight, 2));
-                    if (dist < 0.1f) {
+
+                // Render current ingredient
+                RenderObject3D(shaderProgram, VAO, curr.obj, camera, aspectRatio, modelCache);
+
+                // Check if ingredient is close enough to stack position
+                float distX = abs(curr.obj.x - plate.x);
+                float distZ = abs(curr.obj.z - plate.z);
+                float distY = abs(curr.obj.y - stackHeight);
+                
+                // If close enough to stack position, place it (but NOT for sauce bottles!)
+                if (curr.name != "Ketchup" && curr.name != "Mustard") {
+                    if (distX < 0.2f && distZ < 0.2f && distY < 0.3f) {
+                        // Successfully placed on stack
                         currentIngredientIndex++;
                     }
                 }
+                
+                // Check for ENTER key to forcefully place/drop ingredient
+                else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && !spacePressedLastFrame) {
+                    // Check if it's ketchup or mustard BOTTLE being used
+                    if (curr.name == "Ketchup" || curr.name == "Mustard") {
+                        unsigned int splatTexture = 0;
+                        unsigned int sauceModelVAO = 0;
+                        std::string sauceModelPath = "";
+                        
+                        if (curr.name == "Ketchup") {
+                            splatTexture = ketchupSplatTex;
+                            sauceModelVAO = ketchupVAO;
+                            sauceModelPath = "Models/Ketchup.obj";
+                        } else {
+                            splatTexture = mustardSplatTex;
+                            sauceModelVAO = mustardVAO;
+                            sauceModelPath = "Models/Mustard.obj";
+                        }
+                        
+                        // Check collision with plate zone (highest priority) - bottle above burger
+                        if (CheckCollision3D(curr.obj, plateZone)) {
+                            // Bottle is above the burger - place sauce MODEL on the stack
+                            GameObject sauceLayer;
+                            sauceLayer.is3DModel = true;
+                            sauceLayer.modelVAO = sauceModelVAO;
+                            sauceLayer.modelPath = sauceModelPath;
+                            sauceLayer.x = plate.x;
+                            sauceLayer.y = stackHeight;  // Place at current stack height
+                            sauceLayer.z = plate.z;
+                            sauceLayer.w = 0.2f;
+                            sauceLayer.h = 0.2f;
+                            sauceLayer.d = 0.2f;
+                            sauceLayer.r = curr.obj.r;
+                            sauceLayer.g = curr.obj.g;
+                            sauceLayer.b = curr.obj.b;
+                            
+                            // Replace the bottle ingredient with the sauce layer
+                            ingredients[currentIngredientIndex].obj = sauceLayer;
+                            ingredients[currentIngredientIndex].stackSnapHeight = 0.005f;  // VERY thin layer
+                            
+                            // Successfully placed on burger - move to next ingredient
+                            currentIngredientIndex++;
+                        }
+                        // Check table zone - bottle above table
+                        else if (CheckCollision3D(curr.obj, tableZone)) {
+                            // Create splat on table
+                            GameObject splat;
+                            splat.x = curr.obj.x;
+                            splat.y = tableZone.y + 0.01f;
+                            splat.z = curr.obj.z;
+                            splat.w = 0.3f;
+                            splat.h = 0.01f;
+                            splat.d = 0.3f;
+                            splat.useTexture = true;
+                            splat.textureId = splatTexture;
+                            splat.rotateX = -90.0f;  // Lay flat
+                            puddles.push_back(splat);
+                            
+                            // DON'T move to next ingredient - let player try again
+                            // Reset bottle position to make it easier
+                            curr.obj.x = 0.0f;
+                            curr.obj.y = stackHeight + 0.5f;  // Float above current stack
+                            curr.obj.z = 0.0f;
+                        }
+                        // Check floor zone - bottle above floor
+                        else if (CheckCollision3D(curr.obj, floorZone)) {
+                            // Create splat on floor
+                            GameObject splat;
+                            splat.x = curr.obj.x;
+                            splat.y = floorZone.y + 0.01f;
+                            splat.z = curr.obj.z;
+                            splat.w = 0.3f;
+                            splat.h = 0.01f;
+                            splat.d = 0.3f;
+                            splat.useTexture = true;
+                            splat.textureId = splatTexture;
+                            splat.rotateX = -90.0f;  // Lay flat
+                            puddles.push_back(splat);
+                            
+                            // DON'T move to next ingredient - let player try again
+                            // Reset bottle position to make it easier
+                            curr.obj.x = 0.0f;
+                            curr.obj.y = stackHeight + 0.5f;  // Float above current stack
+                            curr.obj.z = 0.0f;
+                        }
+                        else {
+                            // Bottle not above any zone - squeeze does nothing
+                            // Player can keep trying
+                        }
+                    } else {
+                        // Other ingredients - check if over plate
+                        if (CheckCollision3D(curr.obj, plateZone)) {
+                            currentIngredientIndex++;
+                        }
+                    }
+                }
+                spacePressedLastFrame = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS;
             }
             else {
                 currentState = FINISHED;
             }
         }
         else if (currentState == FINISHED) {
-            RenderObject(shaderProgram, VAO, table, camera, aspectRatio);
-            RenderObject(shaderProgram, VAO, plate, camera, aspectRatio);
-            float stackHeight = plate.y + 0.05f;
+            // Render 3D table and plate
+            RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, plate, camera, aspectRatio, modelCache);
+            
+            // Render final burger stack
+            float stackY = plateZone.y + 0.02f;  // Start VERY close to plate (was 0.05f)
             for (auto& ing : ingredients) {
-                if (ing.type == SOLID) {
-                    Ingredient tempIng = ing;
-                    tempIng.obj.x = plate.x;
-                    tempIng.obj.y = stackHeight;
-                    DrawIngredientVisuals(shaderProgram, VAO, tempIng, camera, aspectRatio);
-                    stackHeight += 0.06f;
-                }
+                GameObject stackedObj = ing.obj;
+                stackedObj.x = plate.x;
+                stackedObj.z = plate.z;
+                stackedObj.y = stackY;
+                
+                RenderObject3D(shaderProgram, VAO, stackedObj, camera, aspectRatio, modelCache);
+                stackY += ing.stackSnapHeight;
             }
+            
+            // Render end message as 2D overlay
+            glDisable(GL_DEPTH_TEST);
             RenderObject(shaderProgram, VAO, endMessage, camera, aspectRatio);
+            glEnable(GL_DEPTH_TEST);
         }
 
         glfwSwapBuffers(window);

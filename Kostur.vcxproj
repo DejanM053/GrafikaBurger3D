@@ -136,10 +136,13 @@
     <ClInclude Include="Header\Util.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="3D_ASSEMBLY_STATE.md" />
     <None Include="3D_COOKING_STATE.md" />
     <None Include="3D_MODEL_IMPLEMENTATION.md" />
     <None Include="COOKING_ZONE_ADJUSTMENT.md" />
+    <None Include="HEIGHT_ADJUSTMENT_GUIDE.md" />
     <None Include="packages.config" />
+    <None Include="SAUCE_BOTTLE_FIX.md" />
   </ItemGroup>
   <ItemGroup>
     <Object Include="Models\cube.obj">

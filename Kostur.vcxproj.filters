@@ -47,6 +47,9 @@
     <None Include="3D_MODEL_IMPLEMENTATION.md" />
     <None Include="3D_COOKING_STATE.md" />
     <None Include="COOKING_ZONE_ADJUSTMENT.md" />
+    <None Include="3D_ASSEMBLY_STATE.md" />
+    <None Include="SAUCE_BOTTLE_FIX.md" />
+    <None Include="HEIGHT_ADJUSTMENT_GUIDE.md" />
   </ItemGroup>
   <ItemGroup>
     <Object Include="Models\cube.obj" />
