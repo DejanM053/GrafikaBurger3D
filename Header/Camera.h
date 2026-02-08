@@ -19,7 +19,7 @@ struct Camera {
     float farPlane;
 
     Camera() :
-        position(0.0f, 2.0f, 5.0f),
+        position(10.0f, 2.0f, 5.0f),
         worldUp(0.0f, 1.0f, 0.0f),
         yaw(-90.0f),
         pitch(0.0f),

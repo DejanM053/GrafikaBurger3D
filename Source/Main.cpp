@@ -165,6 +165,9 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST); // Enable depth testing for 3D
+    //glEnable(GL_CULL_FACE);  // Enable face culling
+    //glCullFace(GL_BACK);     // Cull back faces (default)
+    glFrontFace(GL_CCW);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
     unsigned int shaderProgram = createShader("Shaders/basic.vert", "Shaders/basic.frag");
@@ -216,16 +219,32 @@ int main()
     if (!studentInfo.useTexture) { studentInfo.r = 0; studentInfo.g = 0; studentInfo.b = 0; }
 
     ModelCache modelCache;  // Create once at startup
-    unsigned int vao = loadOBJModel("Models/gornja.obj", modelCache);
+    unsigned int vao = loadOBJModel("Models/Komplet.obj", modelCache);
     GameObject obj3D;
     obj3D.is3DModel = true;
     obj3D.modelVAO = vao;
-    obj3D.modelPath = "Models/gornja.obj";
-    obj3D.x = 0.0f; obj3D.y = 0.0f; obj3D.z = -0.0f;
+    obj3D.modelPath = "Models/Komplet.obj";
+    obj3D.x = 0.0f; obj3D.y = 0.0f; obj3D.z = 0.0f;
     obj3D.w = obj3D.h = obj3D.d = 0.2f; // Scale
-    obj3D.rotateY = 45.0f; // Optional rotation
+    //obj3D.rotateY = 45.0f; // Optional rotation
 
-    
+    unsigned int vao2 = loadOBJModel("Models/Grill.obj", modelCache);
+    GameObject obj3D2;
+    obj3D2.is3DModel = true;
+    obj3D2.modelVAO = vao2;
+    obj3D2.modelPath = "Models/Grill.obj";
+    obj3D2.x = 0.0f; obj3D2.y = 0.0f; obj3D2.z = 0.0f;
+    obj3D2.w = obj3D2.h = obj3D2.d = 0.2f; // Scale
+    //obj3D.rotateY = 45.0f; // Optional rotation
+
+    unsigned int vao3 = loadOBJModel("Models/Boca.obj", modelCache);
+    GameObject obj3D3;
+    obj3D3.is3DModel = true;
+    obj3D3.modelVAO = vao3;
+    obj3D3.modelPath = "Models/Boca.obj";
+    obj3D3.x = 0.0f; obj3D3.y = 0.0f; obj3D3.z = 0.0f;
+    obj3D3.w = obj3D3.h = obj3D3.d = 0.2f; // Scale
+    //obj3D.rotateY = 45.0f; // Optional rotation
 
 
     // --- STATE PROMENLJIVE ---
@@ -340,6 +359,8 @@ int main()
         // --- RENDER LOGIKA ---
         
         RenderObject3D(shaderProgram, VAO, obj3D, camera, aspectRatio, modelCache);
+        RenderObject3D(shaderProgram, VAO, obj3D2, camera, aspectRatio, modelCache);
+        RenderObject3D(shaderProgram, VAO, obj3D3, camera, aspectRatio, modelCache);
         RenderObject(shaderProgram, VAO, studentInfo, camera, aspectRatio);
 
         if (currentState == MENU) {
