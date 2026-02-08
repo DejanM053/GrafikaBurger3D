@@ -61,6 +61,26 @@ bool CheckCollision(GameObject& one, GameObject& two) {
     return collisionX && collisionY;
 }
 
+// 2D collision detection on XZ plane only (ignores Y height)
+// Used for sauce bottle zone detection where height doesn't matter
+bool CheckCollisionXZ(GameObject& one, GameObject& two) {
+    float oneHalfW = one.w / 2.0f;
+    float oneHalfD = one.d / 2.0f;
+    
+    float twoHalfW = two.w / 2.0f;
+    float twoHalfD = two.d / 2.0f;
+    
+    // Check collision on X axis
+    bool collisionX = (one.x + oneHalfW >= two.x - twoHalfW) && 
+                      (one.x - oneHalfW <= two.x + twoHalfW);
+    
+    // Check collision on Z axis
+    bool collisionZ = (one.z + oneHalfD >= two.z - twoHalfD) && 
+                      (one.z - oneHalfD <= two.z + twoHalfD);
+    
+    return collisionX && collisionZ;
+}
+
 // 3D AABB collision detection
 bool CheckCollision3D(GameObject& one, GameObject& two) {
     // Calculate the extents (half-sizes) for each object
@@ -332,6 +352,32 @@ int main()
     floor.h = 0.1f;   // Thin
     floor.d = 10.0f;
 
+    // ========================================
+    // SAUCE BOTTLE ZONE SIZE ADJUSTMENTS
+    // ========================================
+    // These zones define where the sauce will be applied when ENTER is pressed
+    // Only X and Z positions matter - height (Y) is ignored
+    // Adjust these values to change the target areas
+    
+    // PLATE ZONE - Sauce goes on burger
+    const float PLATE_ZONE_X = 0.0f;       // Center X position
+    const float PLATE_ZONE_Z = 0.0f;       // Center Z position
+    const float PLATE_ZONE_WIDTH = 0.5f;   // Width (X axis) - ADJUST THIS
+    const float PLATE_ZONE_DEPTH = 0.5f;   // Depth (Z axis) - ADJUST THIS
+    
+    // TABLE ZONE - Sauce spills on table
+    const float TABLE_ZONE_X = 0.0f;       // Center X position
+    const float TABLE_ZONE_Z = 0.0f;       // Center Z position
+    const float TABLE_ZONE_WIDTH = 2.0f;   // Width (X axis) - ADJUST THIS
+    const float TABLE_ZONE_DEPTH = 2.0f;   // Depth (Z axis) - ADJUST THIS
+    
+    // FLOOR ZONE - Sauce spills on floor (everything outside table)
+    const float FLOOR_ZONE_X = 0.0f;       // Center X position
+    const float FLOOR_ZONE_Z = 0.0f;       // Center Z position
+    const float FLOOR_ZONE_WIDTH = 10.0f;  // Width (X axis) - ADJUST THIS
+    const float FLOOR_ZONE_DEPTH = 10.0f;  // Depth (Z axis) - ADJUST THIS
+    // ========================================
+
     // 3D Plate model for ASSEMBLY state
     unsigned int plateVAO = loadOBJModel("Models/Plate.obj", modelCache);
     GameObject plate;
@@ -352,32 +398,32 @@ int main()
     GameObject plateZone;
     plateZone.is3DModel = false;
     plateZone.isVisible = false;
-    plateZone.x = 0.0f;
-    plateZone.y = -0.45f;   // Plate surface level (ADJUST)
-    plateZone.z = 0.0f;
-    plateZone.w = 0.5f;   // Plate width (ADJUST)
+    plateZone.x = PLATE_ZONE_X;
+    plateZone.y = -0.45f;   // Plate surface level (Y doesn't matter for sauce detection)
+    plateZone.z = PLATE_ZONE_Z;
+    plateZone.w = PLATE_ZONE_WIDTH;   // Use constant
     plateZone.h = 0.1f;
-    plateZone.d = 0.5f;   // Plate depth (ADJUST)
+    plateZone.d = PLATE_ZONE_DEPTH;   // Use constant
 
     GameObject tableZone;
     tableZone.is3DModel = false;
     tableZone.isVisible = false;
-    tableZone.x = 0.0f;
-    tableZone.y = -0.5f;  // Table surface level (ADJUST)
-    tableZone.z = 0.0f;
-    tableZone.w = 2.0f;   // Table width (ADJUST)
+    tableZone.x = TABLE_ZONE_X;
+    tableZone.y = -0.5f;  // Table surface level (Y doesn't matter for sauce detection)
+    tableZone.z = TABLE_ZONE_Z;
+    tableZone.w = TABLE_ZONE_WIDTH;   // Use constant
     tableZone.h = 0.2f;
-    tableZone.d = 2.0f;   // Table depth (ADJUST)
+    tableZone.d = TABLE_ZONE_DEPTH;   // Use constant
 
     GameObject floorZone;
     floorZone.is3DModel = false;
     floorZone.isVisible = false;
-    floorZone.x = 0.0f;
-    floorZone.y = -2.2f;  // Floor level (ADJUST)
-    floorZone.z = 0.0f;
-    floorZone.w = 10.0f;
+    floorZone.x = FLOOR_ZONE_X;
+    floorZone.y = -2.2f;  // Floor level (Y doesn't matter for sauce detection)
+    floorZone.z = FLOOR_ZONE_Z;
+    floorZone.w = FLOOR_ZONE_WIDTH;
     floorZone.h = 0.2f;
-    floorZone.d = 10.0f;
+    floorZone.d = FLOOR_ZONE_DEPTH;
 
     std::vector<Ingredient> ingredients;
     
@@ -672,8 +718,11 @@ int main()
                             sauceModelPath = "Models/Mustard.obj";
                         }
                         
-                        // Check collision with plate zone (highest priority) - bottle above burger
-                        if (CheckCollision3D(curr.obj, plateZone)) {
+                        // Check zones using XZ-only collision (height doesn't matter)
+                        // Priority: Plate > Table > Floor
+                        
+                        // Check collision with plate zone (highest priority) - only X and Z matter
+                        if (CheckCollisionXZ(curr.obj, plateZone)) {
                             // Bottle is above the burger - place sauce MODEL on the stack
                             GameObject sauceLayer;
                             sauceLayer.is3DModel = true;
@@ -696,8 +745,8 @@ int main()
                             // Successfully placed on burger - move to next ingredient
                             currentIngredientIndex++;
                         }
-                        // Check table zone - bottle above table
-                        else if (CheckCollision3D(curr.obj, tableZone)) {
+                        // Check table zone - only X and Z matter
+                        else if (CheckCollisionXZ(curr.obj, tableZone)) {
                             // Create 3D sauce model splat on table (rotated randomly)
                             GameObject splat;
                             splat.is3DModel = true;
@@ -723,8 +772,8 @@ int main()
                             curr.obj.y = stackHeight + 0.5f;  // Float above current stack
                             curr.obj.z = 0.0f;
                         }
-                        // Check floor zone - bottle above floor
-                        else if (CheckCollision3D(curr.obj, floorZone)) {
+                        // Check floor zone - only X and Z matter
+                        else if (CheckCollisionXZ(curr.obj, floorZone)) {
                             // Create 3D sauce model splat on floor (same as table, but on floor)
                             GameObject splat;
                             splat.is3DModel = true;
