@@ -45,6 +45,8 @@
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="3D_MODEL_IMPLEMENTATION.md" />
+    <None Include="3D_COOKING_STATE.md" />
+    <None Include="COOKING_ZONE_ADJUSTMENT.md" />
   </ItemGroup>
   <ItemGroup>
     <Object Include="Models\cube.obj" />

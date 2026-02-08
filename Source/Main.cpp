@@ -59,6 +59,32 @@ bool CheckCollision(GameObject& one, GameObject& two) {
     return collisionX && collisionY;
 }
 
+// 3D AABB collision detection
+bool CheckCollision3D(GameObject& one, GameObject& two) {
+    // Calculate the extents (half-sizes) for each object
+    float oneHalfW = one.w / 2.0f;
+    float oneHalfH = one.h / 2.0f;
+    float oneHalfD = one.d / 2.0f;
+    
+    float twoHalfW = two.w / 2.0f;
+    float twoHalfH = two.h / 2.0f;
+    float twoHalfD = two.d / 2.0f;
+    
+    // Check collision on X axis
+    bool collisionX = (one.x + oneHalfW >= two.x - twoHalfW) && 
+                      (one.x - oneHalfW <= two.x + twoHalfW);
+    
+    // Check collision on Y axis
+    bool collisionY = (one.y + oneHalfH >= two.y - twoHalfH) && 
+                      (one.y - oneHalfH <= two.y + twoHalfH);
+    
+    // Check collision on Z axis
+    bool collisionZ = (one.z + oneHalfD >= two.z - twoHalfD) && 
+                      (one.z - oneHalfD <= two.z + twoHalfD);
+    
+    return collisionX && collisionY && collisionZ;
+}
+
 // Updated RenderObject to use 3D transformations
 void RenderObject(unsigned int shader, unsigned int VAO, GameObject& obj, Camera& camera, float aspectRatio, int roundingMode = 0) {
     if (!obj.isVisible) return;
@@ -219,33 +245,6 @@ int main()
     if (!studentInfo.useTexture) { studentInfo.r = 0; studentInfo.g = 0; studentInfo.b = 0; }
 
     ModelCache modelCache;  // Create once at startup
-    unsigned int vao = loadOBJModel("Models/Komplet.obj", modelCache);
-    GameObject obj3D;
-    obj3D.is3DModel = true;
-    obj3D.modelVAO = vao;
-    obj3D.modelPath = "Models/Komplet.obj";
-    obj3D.x = 0.0f; obj3D.y = 0.0f; obj3D.z = 0.0f;
-    obj3D.w = obj3D.h = obj3D.d = 0.2f; // Scale
-    //obj3D.rotateY = 45.0f; // Optional rotation
-
-    unsigned int vao2 = loadOBJModel("Models/Grill.obj", modelCache);
-    GameObject obj3D2;
-    obj3D2.is3DModel = true;
-    obj3D2.modelVAO = vao2;
-    obj3D2.modelPath = "Models/Grill.obj";
-    obj3D2.x = 0.0f; obj3D2.y = 0.0f; obj3D2.z = 0.0f;
-    obj3D2.w = obj3D2.h = obj3D2.d = 0.2f; // Scale
-    //obj3D.rotateY = 45.0f; // Optional rotation
-
-    unsigned int vao3 = loadOBJModel("Models/Boca.obj", modelCache);
-    GameObject obj3D3;
-    obj3D3.is3DModel = true;
-    obj3D3.modelVAO = vao3;
-    obj3D3.modelPath = "Models/Boca.obj";
-    obj3D3.x = 0.0f; obj3D3.y = 0.0f; obj3D3.z = 0.0f;
-    obj3D3.w = obj3D3.h = obj3D3.d = 0.2f; // Scale
-    //obj3D.rotateY = 45.0f; // Optional rotation
-
 
     // --- STATE PROMENLJIVE ---
     GameState currentState = MENU;
@@ -254,13 +253,70 @@ int main()
     btnOrder.w = 0.4f; btnOrder.h = 0.2f;
     btnOrder.r = 0.9f; btnOrder.g = 0.6f; btnOrder.b = 0.1f;
 
-    GameObject stove;
-    stove.y = -0.7f; stove.w = 1.2f; stove.h = 0.6f;
-    stove.r = 0.2f; stove.g = 0.2f; stove.b = 0.2f;
+    // 3D Grill model for COOKING state
+    unsigned int grillVAO = loadOBJModel("Models/GrillTop.obj", modelCache);
+    GameObject grill;
+    grill.is3DModel = true;
+    grill.modelVAO = grillVAO;
+    grill.modelPath = "Models/GrillTop.obj";
+    grill.x = 0.0f;
+    grill.y = 0.0f;
+    grill.z = 0.0f;
+    grill.w = 0.2f;  // Visual model scale
+    grill.h = 0.2f;
+    grill.d = 0.2f;
+    // Apply metal texture to grill top
+    unsigned int metalTex = loadImageToTexture("Resources/Textures/metal.jpg");
+    grill.useTexture = (metalTex != 0);
+    grill.textureId = metalTex;
+    if (!grill.useTexture) {
+        grill.r = 0.5f;  // Fallback gray color if texture fails
+        grill.g = 0.5f;
+        grill.b = 0.5f;
+    }
 
+    // Detailed 3D Grill model (visual only, under the grill top)
+    unsigned int detailedGrillVAO = loadOBJModel("Models/Grill.obj", modelCache);
+    GameObject detailedGrill;
+    detailedGrill.is3DModel = true;
+    detailedGrill.modelVAO = detailedGrillVAO;
+    detailedGrill.modelPath = "Models/Grill.obj";
+    detailedGrill.x = 0.0f;
+    detailedGrill.y = 0.0f;
+    detailedGrill.z = 0.0f;
+    detailedGrill.w = 0.2f;
+    detailedGrill.h = 0.2f;
+    detailedGrill.d = 0.2f;
+    detailedGrill.r = 0.8f;  // gray color
+    detailedGrill.g = 0.8f;
+    detailedGrill.b = 0.8f;
+
+    // Invisible cooking zone (separate from visual grill)
+    GameObject cookingZone;
+    cookingZone.is3DModel = false;
+    cookingZone.isVisible = false;  // Invisible collision box
+    cookingZone.x = 0.0f;
+    cookingZone.y = 0.0f;  // Same Y as grill center
+    cookingZone.z = 0.0f;
+    cookingZone.w = 1.1f;  // Wider cooking area (adjust this)
+    cookingZone.h = 0.01f;  // Taller cooking area (adjust this)
+    cookingZone.d = 0.9f;  // Deeper cooking area (adjust this)
+
+    // 3D Patty model for COOKING state
+    unsigned int pattyVAO = loadOBJModel("Models/Patty.obj", modelCache);
     GameObject rawPatty;
-    rawPatty.y = 0.5f; rawPatty.w = 0.3f; rawPatty.h = 0.2f;
-    rawPatty.r = 0.9f; rawPatty.g = 0.6f; rawPatty.b = 0.6f;
+    rawPatty.is3DModel = true;
+    rawPatty.modelVAO = pattyVAO;
+    rawPatty.modelPath = "Models/Patty.obj";
+    rawPatty.x = 0.0f;
+    rawPatty.y = 1.5f;
+    rawPatty.z = 0.0f;
+    rawPatty.w = 0.2f;
+    rawPatty.h = 0.15f;
+    rawPatty.d = 0.2f;
+    rawPatty.r = 0.9f;
+    rawPatty.g = 0.6f;
+    rawPatty.b = 0.6f;
 
     GameObject loadingBarBorder;
     loadingBarBorder.y = 0.9f; loadingBarBorder.w = 0.8f; loadingBarBorder.h = 0.1f;
@@ -358,13 +414,16 @@ int main()
 
         // --- RENDER LOGIKA ---
         
-        RenderObject3D(shaderProgram, VAO, obj3D, camera, aspectRatio, modelCache);
-        RenderObject3D(shaderProgram, VAO, obj3D2, camera, aspectRatio, modelCache);
-        RenderObject3D(shaderProgram, VAO, obj3D3, camera, aspectRatio, modelCache);
+        // Render 2D UI overlay (student info - always on top)
+        glDisable(GL_DEPTH_TEST);
         RenderObject(shaderProgram, VAO, studentInfo, camera, aspectRatio);
+        glEnable(GL_DEPTH_TEST);
 
         if (currentState == MENU) {
+            glDisable(GL_DEPTH_TEST);
             RenderObject(shaderProgram, VAO, btnOrder, camera, aspectRatio);
+            glEnable(GL_DEPTH_TEST);
+            
             if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 
                 double mx, my;
@@ -381,26 +440,51 @@ int main()
             }
         }
         else if (currentState == COOKING) {
-            float speed = 1.0f * deltaTime;
-            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) rawPatty.y += speed;
-            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) rawPatty.y -= speed;
-            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) rawPatty.x -= speed;
-            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) rawPatty.x += speed;
+            // 3D movement controls for the patty
+            float speed = 2.0f * deltaTime;
+            
+            // W/A/S/D for X/Z movement
+            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) rawPatty.z -= speed; // Move forward
+            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) rawPatty.z += speed; // Move backward
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) rawPatty.x -= speed; // Move left
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) rawPatty.x += speed; // Move right
+            
+            // SPACE to move up, SHIFT to move down
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) rawPatty.y += speed;
+            if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || 
+                glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
+                rawPatty.y -= speed;
+                // Don't let patty go below grill
+                if (rawPatty.y < 0.0f) rawPatty.y = 0.0f;
+            }
 
-            if (CheckCollision(rawPatty, stove)) {
+            // Check 3D collision with invisible cooking zone (not the visible grill)
+            if (CheckCollision3D(rawPatty, cookingZone)) {
                 cookingProgress += 0.3f * deltaTime;
                 if (cookingProgress > 1.0f) cookingProgress = 1.0f;
+                
+                // Change patty color as it cooks
                 rawPatty.r = 0.9f + (0.5f - 0.9f) * cookingProgress;
                 rawPatty.g = 0.6f + (0.25f - 0.6f) * cookingProgress;
                 rawPatty.b = 0.6f + (0.0f - 0.6f) * cookingProgress;
                 loadingBarFill.w = 0.78f * cookingProgress;
             }
 
-            RenderObject(shaderProgram, VAO, stove, camera, aspectRatio);
-            RenderObject(shaderProgram, VAO, rawPatty, camera, aspectRatio);
+            // Render 3D grill and patty
+            RenderObject3D(shaderProgram, VAO, detailedGrill, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, grill, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, rawPatty, camera, aspectRatio, modelCache);
+            
+            // Render 2D loading bar overlay (unaffected by camera)
+            // Save current depth test state and disable it for UI
+            glDisable(GL_DEPTH_TEST);
+            
             RenderObject(shaderProgram, VAO, loadingBarBorder, camera, aspectRatio);
             loadingBarFill.x = loadingBarBorder.x - loadingBarBorder.w / 2 + loadingBarFill.w / 2 + 0.01f;
             RenderObject(shaderProgram, VAO, loadingBarFill, camera, aspectRatio);
+            
+            // Re-enable depth test
+            glEnable(GL_DEPTH_TEST);
 
             if (cookingProgress >= 1.0f) currentState = ASSEMBLY;
         }

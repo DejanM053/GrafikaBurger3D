@@ -136,7 +136,9 @@
     <ClInclude Include="Header\Util.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="3D_COOKING_STATE.md" />
     <None Include="3D_MODEL_IMPLEMENTATION.md" />
+    <None Include="COOKING_ZONE_ADJUSTMENT.md" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
