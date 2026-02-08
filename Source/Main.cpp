@@ -373,7 +373,7 @@ int main()
     floorZone.is3DModel = false;
     floorZone.isVisible = false;
     floorZone.x = 0.0f;
-    floorZone.y = -1.5f;  // Floor level (ADJUST)
+    floorZone.y = -2.2f;  // Floor level (ADJUST)
     floorZone.z = 0.0f;
     floorZone.w = 10.0f;
     floorZone.h = 0.2f;
@@ -587,10 +587,11 @@ int main()
             RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
             RenderObject3D(shaderProgram, VAO, plate, camera, aspectRatio, modelCache);
 
-            // Render 2D splat puddles on surfaces
-            glDisable(GL_DEPTH_TEST);
-            for (auto& p : puddles) RenderObject(shaderProgram, VAO, p, camera, aspectRatio);
-            glEnable(GL_DEPTH_TEST);
+            // Render splat puddles (both 3D models on table and floor)
+            for (auto& p : puddles) {
+                // All puddles are now 3D models
+                RenderObject3D(shaderProgram, VAO, p, camera, aspectRatio, modelCache);
+            }
 
             // Calculate current stack height for placement
             float stackHeight = plateZone.y;  // Start VERY close to plate (was 0.05f)
@@ -697,17 +698,23 @@ int main()
                         }
                         // Check table zone - bottle above table
                         else if (CheckCollision3D(curr.obj, tableZone)) {
-                            // Create splat on table
+                            // Create 3D sauce model splat on table (rotated randomly)
                             GameObject splat;
+                            splat.is3DModel = true;
+                            splat.modelVAO = sauceModelVAO;
+                            splat.modelPath = sauceModelPath;
                             splat.x = curr.obj.x;
-                            splat.y = tableZone.y + 0.01f;
+                            splat.y = tableZone.y - 0.14f;  // Place directly on table surface (not above)
                             splat.z = curr.obj.z;
-                            splat.w = 0.3f;
-                            splat.h = 0.01f;
-                            splat.d = 0.3f;
-                            splat.useTexture = true;
-                            splat.textureId = splatTexture;
-                            splat.rotateX = -90.0f;  // Lay flat
+                            splat.w = 0.2f;
+                            splat.h = 0.2f;
+                            splat.d = 0.2f;
+                            splat.r = curr.obj.r;
+                            splat.g = curr.obj.g;
+                            splat.b = curr.obj.b;
+                            // Random rotation around Y axis for variety
+                            splat.rotateY = static_cast<float>(rand() % 360);
+                            
                             puddles.push_back(splat);
                             
                             // DON'T move to next ingredient - let player try again
@@ -718,17 +725,23 @@ int main()
                         }
                         // Check floor zone - bottle above floor
                         else if (CheckCollision3D(curr.obj, floorZone)) {
-                            // Create splat on floor
+                            // Create 3D sauce model splat on floor (same as table, but on floor)
                             GameObject splat;
+                            splat.is3DModel = true;
+                            splat.modelVAO = sauceModelVAO;
+                            splat.modelPath = sauceModelPath;
                             splat.x = curr.obj.x;
-                            splat.y = floorZone.y + 0.01f;
+                            splat.y = floorZone.y;  // Place directly on floor surface
                             splat.z = curr.obj.z;
-                            splat.w = 0.3f;
-                            splat.h = 0.01f;
-                            splat.d = 0.3f;
-                            splat.useTexture = true;
-                            splat.textureId = splatTexture;
-                            splat.rotateX = -90.0f;  // Lay flat
+                            splat.w = 0.2f;
+                            splat.h = 0.2f;
+                            splat.d = 0.2f;
+                            splat.r = curr.obj.r;
+                            splat.g = curr.obj.g;
+                            splat.b = curr.obj.b;
+                            // Random rotation around Y axis for variety
+                            splat.rotateY = static_cast<float>(rand() % 360);
+                            
                             puddles.push_back(splat);
                             
                             // DON'T move to next ingredient - let player try again
