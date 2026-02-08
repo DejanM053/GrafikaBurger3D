@@ -299,6 +299,37 @@ int main()
     cookingZone.h = 0.01f;  // Taller cooking area (adjust this)
     cookingZone.d = 0.9f;  // Deeper cooking area (adjust this)
 
+    // Room and floor
+    unsigned int roomVAO = loadOBJModel("Models/Room.obj", modelCache);
+    GameObject room;
+    room.is3DModel = true;
+    room.modelVAO = roomVAO;
+    room.modelPath = "Models/Room.obj";
+    room.x = 0.0f;
+    room.y = -0.55f;
+    room.z = 0.0f;
+    room.w = 0.2f;
+    room.h = 0.2f;
+    room.d = 0.2f;
+    room.r = 0.9f;  // gray color
+    room.g = 0.9f;
+    room.b = 0.9f;
+
+    unsigned int floorVAO = loadOBJModel("Models/Floor.obj", modelCache);
+    GameObject floorObj;
+    floorObj.is3DModel = true;
+    floorObj.modelVAO = floorVAO;
+    floorObj.modelPath = "Models/Room.obj";
+    floorObj.x = 0.0f;
+    floorObj.y = -0.55f;
+    floorObj.z = 0.0f;
+    floorObj.w = 0.2f;
+    floorObj.h = 0.2f;
+    floorObj.d = 0.2f;
+    floorObj.r = 0.4f;  // gray color
+    floorObj.g = 0.4f;
+    floorObj.b = 0.4f;
+
     // 3D Patty model for COOKING state
     unsigned int pattyVAO = loadOBJModel("Models/Patty.obj", modelCache);
     GameObject rawPatty;
@@ -611,7 +642,10 @@ int main()
 
             // Render 3D grill and patty
             RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, floorObj, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, room, camera, aspectRatio, modelCache);
             RenderObject3D(shaderProgram, VAO, detailedGrill, camera, aspectRatio, modelCache);
+
             RenderObject3D(shaderProgram, VAO, grill, camera, aspectRatio, modelCache);
             RenderObject3D(shaderProgram, VAO, rawPatty, camera, aspectRatio, modelCache);
             
@@ -632,6 +666,8 @@ int main()
             // Render 3D table and plate
             RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
             RenderObject3D(shaderProgram, VAO, plate, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, floorObj, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, room, camera, aspectRatio, modelCache);
 
             // Render splat puddles (both 3D models on table and floor)
             for (auto& p : puddles) {
@@ -768,9 +804,9 @@ int main()
                             
                             // DON'T move to next ingredient - let player try again
                             // Reset bottle position to make it easier
-                            curr.obj.x = 0.0f;
-                            curr.obj.y = stackHeight + 0.5f;  // Float above current stack
-                            curr.obj.z = 0.0f;
+                            //curr.obj.x = 0.0f;
+                            //curr.obj.y = stackHeight + 0.5f;  // Float above current stack
+                            //curr.obj.z = 0.0f;
                         }
                         // Check floor zone - only X and Z matter
                         else if (CheckCollisionXZ(curr.obj, floorZone)) {
@@ -795,9 +831,9 @@ int main()
                             
                             // DON'T move to next ingredient - let player try again
                             // Reset bottle position to make it easier
-                            curr.obj.x = 0.0f;
-                            curr.obj.y = stackHeight + 0.5f;  // Float above current stack
-                            curr.obj.z = 0.0f;
+                            //curr.obj.x = 0.0f;
+                            //curr.obj.y = stackHeight + 0.5f;  // Float above current stack
+                            //curr.obj.z = 0.0f;
                         }
                         else {
                             // Bottle not above any zone - squeeze does nothing
@@ -820,6 +856,8 @@ int main()
             // Render 3D table and plate
             RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
             RenderObject3D(shaderProgram, VAO, plate, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, floorObj, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, room, camera, aspectRatio, modelCache);
             
             // Render final burger stack
             float stackY = plateZone.y + 0.02f;  // Start VERY close to plate (was 0.05f)
