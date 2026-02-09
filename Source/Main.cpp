@@ -157,6 +157,52 @@ void RenderObject(unsigned int shader, unsigned int VAO, GameObject& obj, Camera
     glBindVertexArray(0);
 }
 
+// Render 2D UI overlay elements (unaffected by camera)
+// Uses orthographic projection and identity view matrix
+void RenderUIObject(unsigned int shader, unsigned int VAO, GameObject& obj, Camera& camera, int roundingMode = 0) {
+    if (!obj.isVisible) return;
+
+    glUseProgram(shader);
+
+    // Create model matrix for 2D positioning
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(obj.x, obj.y, 0.0f));  // Z is always 0 for UI
+    model = glm::scale(model, glm::vec3(obj.w, obj.h, 1.0f));
+
+    // Get UI projection and view matrices (orthographic + identity)
+    glm::mat4 view = camera.getUIViewMatrix();
+    glm::mat4 projection = camera.getOrthoProjectionMatrix();
+
+    // Set matrix uniforms
+    unsigned int uModelLoc = glGetUniformLocation(shader, "uModel");
+    unsigned int uViewLoc = glGetUniformLocation(shader, "uView");
+    unsigned int uProjLoc = glGetUniformLocation(shader, "uProjection");
+
+    glUniformMatrix4fv(uModelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    unsigned int uColorLoc = glGetUniformLocation(shader, "uColor");
+    unsigned int uUseTexLoc = glGetUniformLocation(shader, "uUseTexture");
+    unsigned int uRoundingLoc = glGetUniformLocation(shader, "uRounding");
+
+    glUniform4f(uColorLoc, obj.r, obj.g, obj.b, obj.a);
+    glUniform1i(uRoundingLoc, roundingMode);
+
+    if (obj.useTexture) {
+        glUniform1i(uUseTexLoc, 1);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, obj.textureId);
+    }
+    else {
+        glUniform1i(uUseTexLoc, 0);
+    }
+
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+}
+
 void error_callback(int error, const char* description)
 {
     fprintf(stderr, "GLFW Error: %s\n", description);
@@ -582,20 +628,11 @@ int main()
         glfwGetWindowSize(window, &windowWidth, &windowHeight);
         float aspectRatio = (float)windowWidth / (float)windowHeight;
 
-        // --- RENDER LOGIKA ---
+        // === GAME LOGIC (Update state, handle input) ===
         
-        // Render 2D UI overlay (student info - always on top)
-        glDisable(GL_DEPTH_TEST);
-        RenderObject(shaderProgram, VAO, studentInfo, camera, aspectRatio);
-        glEnable(GL_DEPTH_TEST);
-
         if (currentState == MENU) {
-            glDisable(GL_DEPTH_TEST);
-            RenderObject(shaderProgram, VAO, btnOrder, camera, aspectRatio);
-            glEnable(GL_DEPTH_TEST);
-            
+            // Menu button click detection
             if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-
                 double mx, my;
                 glfwGetCursorPos(window, &mx, &my);
                 int w, h;
@@ -603,7 +640,7 @@ int main()
                 float ndcX = (2.0f * mx) / w - 1.0f;
                 float ndcY = 1.0f - (2.0f * my) / h;
                 if (ndcX > (btnOrder.x - btnOrder.w / 2) && ndcX < (btnOrder.x + btnOrder.w / 2) &&
-                    ndcY >(btnOrder.y - btnOrder.h / 2) && ndcY < (btnOrder.y + btnOrder.h / 2))
+                    ndcY > (btnOrder.y - btnOrder.h / 2) && ndcY < (btnOrder.y + btnOrder.h / 2))
                 {
                     currentState = COOKING;
                 }
@@ -640,64 +677,13 @@ int main()
                 loadingBarFill.w = 0.78f * cookingProgress;
             }
 
-            // Render 3D grill and patty
-            RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
-            RenderObject3D(shaderProgram, VAO, floorObj, camera, aspectRatio, modelCache);
-            RenderObject3D(shaderProgram, VAO, room, camera, aspectRatio, modelCache);
-            RenderObject3D(shaderProgram, VAO, detailedGrill, camera, aspectRatio, modelCache);
-
-            RenderObject3D(shaderProgram, VAO, grill, camera, aspectRatio, modelCache);
-            RenderObject3D(shaderProgram, VAO, rawPatty, camera, aspectRatio, modelCache);
-            
-            // Render 2D loading bar overlay (unaffected by camera)
-            // Save current depth test state and disable it for UI
-            glDisable(GL_DEPTH_TEST);
-            
-            RenderObject(shaderProgram, VAO, loadingBarBorder, camera, aspectRatio);
-            loadingBarFill.x = loadingBarBorder.x - loadingBarBorder.w / 2 + loadingBarFill.w / 2 + 0.01f;
-            RenderObject(shaderProgram, VAO, loadingBarFill, camera, aspectRatio);
-            
-            // Re-enable depth test
-            glEnable(GL_DEPTH_TEST);
-
             if (cookingProgress >= 1.0f) currentState = ASSEMBLY;
         }
         else if (currentState == ASSEMBLY) {
-            // Render 3D table and plate
-            RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
-            RenderObject3D(shaderProgram, VAO, plate, camera, aspectRatio, modelCache);
-            RenderObject3D(shaderProgram, VAO, floorObj, camera, aspectRatio, modelCache);
-            RenderObject3D(shaderProgram, VAO, room, camera, aspectRatio, modelCache);
-
-            // Render splat puddles (both 3D models on table and floor)
-            for (auto& p : puddles) {
-                // All puddles are now 3D models
-                RenderObject3D(shaderProgram, VAO, p, camera, aspectRatio, modelCache);
-            }
-
             // Calculate current stack height for placement
-            float stackHeight = plateZone.y;  // Start VERY close to plate (was 0.05f)
+            float stackHeight = plateZone.y;
             for (int i = 0; i < currentIngredientIndex; i++) {
                 stackHeight += ingredients[i].stackSnapHeight;
-            }
-
-            // Render stacked ingredients
-            for (int i = 0; i < currentIngredientIndex; i++) {
-                GameObject stackedObj = ingredients[i].obj;
-                stackedObj.x = plate.x;
-                stackedObj.z = plate.z;
-                
-                // Calculate Y position for this stacked ingredient
-                float stackY = plateZone.y + 0.02f;  // Start VERY close to plate (was 0.05f)
-                for (int j = 0; j <= i; j++) {
-                    if (j == i) {
-                        stackedObj.y = stackY;
-                    } else {
-                        stackY += ingredients[j].stackSnapHeight;
-                    }
-                }
-                
-                RenderObject3D(shaderProgram, VAO, stackedObj, camera, aspectRatio, modelCache);
             }
 
             // Handle current ingredient being placed
@@ -720,9 +706,6 @@ int main()
                     if (curr.obj.y < curr.minHeight) curr.obj.y = curr.minHeight;
                 }
 
-                // Render current ingredient
-                RenderObject3D(shaderProgram, VAO, curr.obj, camera, aspectRatio, modelCache);
-
                 // Check if ingredient is close enough to stack position
                 float distX = abs(curr.obj.x - plate.x);
                 float distZ = abs(curr.obj.z - plate.z);
@@ -737,7 +720,7 @@ int main()
                 }
                 
                 // Check for ENTER key to forcefully place/drop ingredient
-                else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && !spacePressedLastFrame) {
+                if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && !spacePressedLastFrame) {
                     // Check if it's ketchup or mustard BOTTLE being used
                     if (curr.name == "Ketchup" || curr.name == "Mustard") {
                         unsigned int splatTexture = 0;
@@ -801,12 +784,6 @@ int main()
                             splat.rotateY = static_cast<float>(rand() % 360);
                             
                             puddles.push_back(splat);
-                            
-                            // DON'T move to next ingredient - let player try again
-                            // Reset bottle position to make it easier
-                            //curr.obj.x = 0.0f;
-                            //curr.obj.y = stackHeight + 0.5f;  // Float above current stack
-                            //curr.obj.z = 0.0f;
                         }
                         // Check floor zone - only X and Z matter
                         else if (CheckCollisionXZ(curr.obj, floorZone)) {
@@ -828,16 +805,6 @@ int main()
                             splat.rotateY = static_cast<float>(rand() % 360);
                             
                             puddles.push_back(splat);
-                            
-                            // DON'T move to next ingredient - let player try again
-                            // Reset bottle position to make it easier
-                            //curr.obj.x = 0.0f;
-                            //curr.obj.y = stackHeight + 0.5f;  // Float above current stack
-                            //curr.obj.z = 0.0f;
-                        }
-                        else {
-                            // Bottle not above any zone - squeeze does nothing
-                            // Player can keep trying
                         }
                     } else {
                         // Other ingredients - check if over plate
@@ -852,6 +819,66 @@ int main()
                 currentState = FINISHED;
             }
         }
+
+        // --- RENDER LOGIKA ---
+        
+        // === RENDER 3D SCENE (with depth testing) ===
+        glEnable(GL_DEPTH_TEST);
+
+        if (currentState == MENU) {
+            // No 3D scene in menu state
+        }
+        else if (currentState == COOKING) {
+            // Render 3D grill and patty
+            RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, floorObj, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, room, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, detailedGrill, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, grill, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, rawPatty, camera, aspectRatio, modelCache);
+        }
+        else if (currentState == ASSEMBLY) {
+            // Render 3D table and plate
+            RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, plate, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, floorObj, camera, aspectRatio, modelCache);
+            RenderObject3D(shaderProgram, VAO, room, camera, aspectRatio, modelCache);
+
+            // Render splat puddles (both 3D models on table and floor)
+            for (auto& p : puddles) {
+                RenderObject3D(shaderProgram, VAO, p, camera, aspectRatio, modelCache);
+            }
+
+            // Calculate current stack height for placement
+            float stackHeight = plateZone.y;
+            for (int i = 0; i < currentIngredientIndex; i++) {
+                stackHeight += ingredients[i].stackSnapHeight;
+            }
+
+            // Render stacked ingredients
+            for (int i = 0; i < currentIngredientIndex; i++) {
+                GameObject stackedObj = ingredients[i].obj;
+                stackedObj.x = plate.x;
+                stackedObj.z = plate.z;
+                
+                float stackY = plateZone.y + 0.02f;
+                for (int j = 0; j <= i; j++) {
+                    if (j == i) {
+                        stackedObj.y = stackY;
+                    } else {
+                        stackY += ingredients[j].stackSnapHeight;
+                    }
+                }
+                
+                RenderObject3D(shaderProgram, VAO, stackedObj, camera, aspectRatio, modelCache);
+            }
+
+            // Render current ingredient being placed
+            if (currentIngredientIndex < ingredients.size()) {
+                Ingredient& curr = ingredients[currentIngredientIndex];
+                RenderObject3D(shaderProgram, VAO, curr.obj, camera, aspectRatio, modelCache);
+            }
+        }
         else if (currentState == FINISHED) {
             // Render 3D table and plate
             RenderObject3D(shaderProgram, VAO, table, camera, aspectRatio, modelCache);
@@ -860,7 +887,7 @@ int main()
             RenderObject3D(shaderProgram, VAO, room, camera, aspectRatio, modelCache);
             
             // Render final burger stack
-            float stackY = plateZone.y + 0.02f;  // Start VERY close to plate (was 0.05f)
+            float stackY = plateZone.y + 0.02f;
             for (auto& ing : ingredients) {
                 GameObject stackedObj = ing.obj;
                 stackedObj.x = plate.x;
@@ -870,11 +897,27 @@ int main()
                 RenderObject3D(shaderProgram, VAO, stackedObj, camera, aspectRatio, modelCache);
                 stackY += ing.stackSnapHeight;
             }
-            
-            // Render end message as 2D overlay
-            glDisable(GL_DEPTH_TEST);
-            RenderObject(shaderProgram, VAO, endMessage, camera, aspectRatio);
-            glEnable(GL_DEPTH_TEST);
+        }
+
+        // === RENDER 2D UI OVERLAY (without depth testing) ===
+        glDisable(GL_DEPTH_TEST);
+
+        // Student info overlay (always visible)
+        RenderUIObject(shaderProgram, VAO, studentInfo, camera);
+
+        if (currentState == MENU) {
+            // Menu button
+            RenderUIObject(shaderProgram, VAO, btnOrder, camera);
+        }
+        else if (currentState == COOKING) {
+            // Loading bar
+            RenderUIObject(shaderProgram, VAO, loadingBarBorder, camera);
+            loadingBarFill.x = loadingBarBorder.x - loadingBarBorder.w / 2 + loadingBarFill.w / 2 + 0.01f;
+            RenderUIObject(shaderProgram, VAO, loadingBarFill, camera);
+        }
+        else if (currentState == FINISHED) {
+            // End message
+            RenderUIObject(shaderProgram, VAO, endMessage, camera);
         }
 
         glfwSwapBuffers(window);

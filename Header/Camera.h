@@ -49,6 +49,17 @@ struct Camera {
         return glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
     }
 
+    // Get orthographic projection matrix for 2D UI overlay
+    // This creates a fixed 2D coordinate system from -1 to 1 on both axes
+    glm::mat4 getOrthoProjectionMatrix() {
+        return glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
+    }
+
+    // Get identity view matrix for UI (no camera transformation)
+    glm::mat4 getUIViewMatrix() {
+        return glm::mat4(1.0f);
+    }
+
     void processKeyboard(int key, float deltaTime, bool allowMovement) {
         if (!allowMovement) return;
 

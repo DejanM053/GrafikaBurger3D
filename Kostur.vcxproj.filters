@@ -51,6 +51,7 @@
     <None Include="SAUCE_BOTTLE_FIX.md" />
     <None Include="HEIGHT_ADJUSTMENT_GUIDE.md" />
     <None Include="SAUCE_ZONE_ADJUSTMENT_GUIDE.md" />
+    <None Include="UI_OVERLAY_SYSTEM_GUIDE.md" />
   </ItemGroup>
   <ItemGroup>
     <Object Include="Models\cube.obj" />
