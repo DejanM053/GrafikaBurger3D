@@ -278,13 +278,13 @@ int main()
     camera.pitch = 0.0f;
     camera.updateCameraVectors();
 
-    unsigned int studentTex = loadImageToTexture("Resources/student_info.png");
+    unsigned int studentTex = loadImageToTexture("Resources/student_info_sb.png");
     GameObject studentInfo;
     studentInfo.w = 0.5f; studentInfo.h = 0.3f;
     studentInfo.x = 0.7f; studentInfo.y = 0.8f;
     studentInfo.useTexture = (studentTex != 0);
     studentInfo.textureId = studentTex;
-    studentInfo.a = 0.5f;
+    studentInfo.a = 0.7f;
     if (!studentInfo.useTexture) { studentInfo.r = 0; studentInfo.g = 0; studentInfo.b = 0; }
 
     ModelCache modelCache;  // Create once at startup
@@ -292,9 +292,17 @@ int main()
     // --- STATE PROMENLJIVE ---
     GameState currentState = MENU;
 
+    // Load start button texture
+    unsigned int startButtonTex = loadImageToTexture("Resources/start.jpg");
     GameObject btnOrder;
-    btnOrder.w = 0.4f; btnOrder.h = 0.2f;
-    btnOrder.r = 0.9f; btnOrder.g = 0.6f; btnOrder.b = 0.1f;
+    btnOrder.w = 0.4f; btnOrder.h = 0.3f;
+    btnOrder.x = 0.0f; btnOrder.y = 0.0f;  // Center the button
+    btnOrder.useTexture = (startButtonTex != 0);
+    btnOrder.textureId = startButtonTex;
+    if (!btnOrder.useTexture) {
+        // Fallback color if texture fails to load
+        btnOrder.r = 0.9f; btnOrder.g = 0.6f; btnOrder.b = 0.1f;
+    }
 
     // 3D Grill model for COOKING state
     unsigned int grillVAO = loadOBJModel("Models/GrillTop.obj", modelCache);
@@ -579,7 +587,8 @@ int main()
 
     // End message for FINISHED state
     GameObject endMessage;
-    endMessage.w = 0.8f; endMessage.h = 0.4f;
+    endMessage.w = 0.4f; endMessage.h = 0.2f;
+    endMessage.x = 0.0f; endMessage.y = 0.2f;
     endMessage.useTexture = true;
     unsigned int msgTex = loadImageToTexture("Resources/prijatno.png");
     if (msgTex) endMessage.textureId = msgTex;
@@ -614,7 +623,8 @@ int main()
             camera.processKeyboard(GLFW_KEY_RIGHT, deltaTime, allowCameraMovement);
 
         // Mouse camera rotation (only when right mouse button is held)
-        bool allowCameraRotation = allowCameraMovement && (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS);
+        //  && (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+        bool allowCameraRotation = allowCameraMovement;
         if (allowCameraRotation) {
             double mouseX, mouseY;
             glfwGetCursorPos(window, &mouseX, &mouseY);
