@@ -216,7 +216,9 @@ int main()
 
     // --- IZMENE ZA CORE PROFILE 3.3 ---
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Opciono: potrebno za Mac OS
     // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); 
