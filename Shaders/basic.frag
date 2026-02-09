@@ -14,6 +14,13 @@ uniform int uUseTexture;
 // 0 = Nema zaobljenja, 1 = Dole (BunBot), 2 = Gore (BunTop)
 uniform int uRounding; 
 
+// Phong lighting uniforms
+uniform vec3 uLightPos;       // Light position in world space
+uniform vec3 uLightColor;     // Light color
+uniform float uLightStrength; // Light intensity/strength
+uniform bool uLightEnabled;   // Toggle light on/off
+uniform vec3 uViewPos;        // Camera position for specular calculation
+
 void main()
 {
     // --- Logika za zaobljavanje coskova ---
@@ -43,24 +50,50 @@ void main()
     if (discardPixel) discard; // Izbaci piksel (providno)
     // --------------------------------------
 
-    vec4 finalColor;
+    // Get base color from texture or uniform
+    vec4 baseColor;
     if(uUseTexture == 1)
     {
         vec4 texColor = texture(uTexture, TexCoord);
-        finalColor = texColor * uColor; 
+        baseColor = texColor * uColor; 
     }
     else
     {
-        finalColor = uColor;
+        baseColor = uColor;
     }
     
-    // Simple lighting calculation (optional - can be disabled by setting light to 1.0)
-    // Assumes a light from above-front
-    vec3 lightDir = normalize(vec3(0.0, 1.0, 1.0));
-    vec3 norm = normalize(Normal);
-    float diff = max(dot(norm, lightDir), 0.0);
-    float ambientStrength = 0.6;
-    float light = ambientStrength + (1.0 - ambientStrength) * diff;
+    // === PHONG LIGHTING CALCULATION ===
+    vec3 finalLighting;
     
-    FragColor = vec4(finalColor.rgb * light, finalColor.a);
+    if (uLightEnabled) {
+        // Normalize the normal vector
+        vec3 norm = normalize(Normal);
+        
+        // --- Ambient component ---
+        float ambientStrength = 0.3;
+        vec3 ambient = ambientStrength * uLightColor;
+        
+        // --- Diffuse component ---
+        vec3 lightDir = normalize(uLightPos - FragPos);
+        float diff = max(dot(norm, lightDir), 0.0);
+        vec3 diffuse = diff * uLightColor;
+        
+        // --- Specular component ---
+        float specularStrength = 0.5;
+        vec3 viewDir = normalize(uViewPos - FragPos);
+        vec3 reflectDir = reflect(-lightDir, norm);
+        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+        vec3 specular = specularStrength * spec * uLightColor;
+        
+        // Combine all components
+        finalLighting = (ambient + diffuse + specular) * uLightStrength;
+    }
+    else {
+        // Light disabled - use only ambient lighting (dark scene)
+        float ambientStrength = 0.5;
+        finalLighting = vec3(ambientStrength);
+    }
+    
+    // Apply lighting to base color
+    FragColor = vec4(baseColor.rgb * finalLighting, baseColor.a);
 }

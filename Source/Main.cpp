@@ -14,6 +14,7 @@
 #include "../Header/Model.h"
 #include "../Header/GameObject.h"
 #include "../Header/Camera.h"
+#include "../Header/Light.h"
 
 // --- KONSTANTE I STANJA ---
 enum GameState {
@@ -277,6 +278,12 @@ int main()
     camera.yaw = -90.0f;  // Look towards negative Z
     camera.pitch = 0.0f;
     camera.updateCameraVectors();
+
+    // --- CREATE LIGHT ---
+    Light sceneLight;
+    // Default values: position(5, 10, 5), color(1, 1, 1), strength(1.0), enabled(true)
+    
+    bool plusKeyPressedLastFrame = false;  // For toggle detection
 
     unsigned int studentTex = loadImageToTexture("Resources/student_info_sb.png");
     GameObject studentInfo;
@@ -609,6 +616,14 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
 
+        // --- LIGHT TOGGLE (+ KEY) ---
+        if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS && !plusKeyPressedLastFrame) {
+            // Toggle light on/off (EQUAL key is the same as + without shift)
+            sceneLight.enabled = !sceneLight.enabled;
+            std::cout << "Light " << (sceneLight.enabled ? "ENABLED" : "DISABLED") << std::endl;
+        }
+        plusKeyPressedLastFrame = (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS);
+
         // --- CAMERA CONTROLS ---
         bool allowCameraMovement = (currentState != MENU && currentState != FINISHED);
 
@@ -831,6 +846,9 @@ int main()
         }
 
         // --- RENDER LOGIKA ---
+        
+        // === PASS LIGHT UNIFORMS TO SHADER ===
+        setLightUniforms(shaderProgram, sceneLight, camera);
         
         // === RENDER 3D SCENE (with depth testing) ===
         glEnable(GL_DEPTH_TEST);

@@ -8,6 +8,7 @@
 
 #include "GameObject.h"
 #include "Camera.h"
+#include "Light.h"
 
 // Forward declarations
 class ModelCache;
@@ -23,3 +24,6 @@ unsigned int loadOBJModel(const char* filepath, ModelCache& cache);
 // Render a 3D model or 2D quad based on GameObject settings
 void RenderObject3D(unsigned int shader, unsigned int quadVAO, GameObject& obj, 
                     Camera& camera, float aspectRatio, ModelCache& cache, int roundingMode = 0);
+
+// Pass light uniforms to shader
+void setLightUniforms(unsigned int shader, const Light& light, const Camera& camera);

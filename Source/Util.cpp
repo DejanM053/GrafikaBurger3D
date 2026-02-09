@@ -254,3 +254,28 @@ void RenderObject3D(unsigned int shader, unsigned int quadVAO, GameObject& obj,
         glBindVertexArray(0);
     }
 }
+
+// Pass light uniforms to shader for Phong lighting
+void setLightUniforms(unsigned int shader, const Light& light, const Camera& camera) {
+    glUseProgram(shader);
+    
+    // Light position
+    unsigned int lightPosLoc = glGetUniformLocation(shader, "uLightPos");
+    glUniform3f(lightPosLoc, light.position.x, light.position.y, light.position.z);
+    
+    // Light color
+    unsigned int lightColorLoc = glGetUniformLocation(shader, "uLightColor");
+    glUniform3f(lightColorLoc, light.color.r, light.color.g, light.color.b);
+    
+    // Light strength
+    unsigned int lightStrengthLoc = glGetUniformLocation(shader, "uLightStrength");
+    glUniform1f(lightStrengthLoc, light.strength);
+    
+    // Light enabled/disabled
+    unsigned int lightEnabledLoc = glGetUniformLocation(shader, "uLightEnabled");
+    glUniform1i(lightEnabledLoc, light.enabled ? 1 : 0);
+    
+    // Camera position (for specular calculation)
+    unsigned int viewPosLoc = glGetUniformLocation(shader, "uViewPos");
+    glUniform3f(viewPosLoc, camera.position.x, camera.position.y, camera.position.z);
+}

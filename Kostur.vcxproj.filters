@@ -41,6 +41,9 @@
     <ClInclude Include="Header\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Header\Light.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -52,6 +55,8 @@
     <None Include="HEIGHT_ADJUSTMENT_GUIDE.md" />
     <None Include="SAUCE_ZONE_ADJUSTMENT_GUIDE.md" />
     <None Include="UI_OVERLAY_SYSTEM_GUIDE.md" />
+    <None Include="PHONG_LIGHTING_SYSTEM.md" />
+    <None Include="LIGHTING_QUICK_REFERENCE.md" />
   </ItemGroup>
   <ItemGroup>
     <Object Include="Models\cube.obj" />
