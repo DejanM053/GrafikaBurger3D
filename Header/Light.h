@@ -10,9 +10,9 @@ struct Light {
     
     // Constructor with default values
     Light() :
-        position(4.0f, 7.0f, 3.0f),
-        color(1.0f, 0.85f, 0.75f),
-        strength(0.9f),
+        position(6.0f, 7.0f, 4.0f),
+        color(1.0f, 0.84f, 0.74f),
+        strength(0.95f),
         enabled(true)
     {}
     

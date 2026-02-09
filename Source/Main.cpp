@@ -946,7 +946,10 @@ int main()
                 stackY += ing.stackSnapHeight;
             }
         }
-
+        // Disable lighting for UI elements (they should be full brightness)
+        Light uiLight = sceneLight;
+        uiLight.enabled = false;
+        setLightUniforms(shaderProgram, uiLight, camera);
         // === RENDER 2D UI OVERLAY (without depth testing) ===
         glDisable(GL_DEPTH_TEST);
 
