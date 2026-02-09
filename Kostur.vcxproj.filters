@@ -57,6 +57,8 @@
     <None Include="UI_OVERLAY_SYSTEM_GUIDE.md" />
     <None Include="PHONG_LIGHTING_SYSTEM.md" />
     <None Include="LIGHTING_QUICK_REFERENCE.md" />
+    <None Include="RENDERING_TOGGLES.md" />
+    <None Include="ALL_TOGGLES_QUICK_REF.md" />
   </ItemGroup>
   <ItemGroup>
     <Object Include="Models\cube.obj" />

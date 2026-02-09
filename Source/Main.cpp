@@ -284,6 +284,12 @@ int main()
     // Default values: position(5, 10, 5), color(1, 1, 1), strength(1.0), enabled(true)
     
     bool plusKeyPressedLastFrame = false;  // For toggle detection
+    
+    // --- RENDERING TOGGLES ---
+    bool backfaceCullingEnabled = false;  // Starts disabled
+    bool depthTestingEnabled = true;      // Starts enabled
+    bool f1KeyPressedLastFrame = false;   // For F1 toggle detection
+    bool f2KeyPressedLastFrame = false;   // For F2 toggle detection
 
     unsigned int studentTex = loadImageToTexture("Resources/student_info_sb.png");
     GameObject studentInfo;
@@ -354,7 +360,7 @@ int main()
     cookingZone.is3DModel = false;
     cookingZone.isVisible = false;  // Invisible collision box
     cookingZone.x = 0.0f;
-    cookingZone.y = -0.18f;  // LOWERED from 0.0f to match grill height
+    cookingZone.y = -0.24f;  // LOWERED from 0.0f to match grill height
     cookingZone.z = 0.0f;
     cookingZone.w = 1.1f;  // Wider cooking area (adjust this)
     cookingZone.h = 0.01f;  // Taller cooking area (adjust this)
@@ -398,7 +404,7 @@ int main()
     rawPatty.modelVAO = pattyVAO;
     rawPatty.modelPath = "Models/Patty.obj";
     rawPatty.x = 0.0f;
-    rawPatty.y = 1.5f;
+    rawPatty.y = 0.4f;
     rawPatty.z = 0.0f;
     rawPatty.w = 0.2f;
     rawPatty.h = 0.15f;
@@ -563,27 +569,16 @@ int main()
     };
     
     // Add all ingredients with their 3D models
-    // Format: name, VAO, modelPath, r, g, b, type, minHeight (ADJUST), stackHeight (ADJUST)
-    //addIngredient3D("BunBot", bunBotVAO, "Models/BottomBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -2.0f, 0.04f);
-    //addIngredient3D("Patty", pattyModelVAO, "Models/Patty.obj", 0.5f, 0.25f, 0.0f, SOLID, -2.0f, 0.015f);
-    //addIngredient3D("Ketchup", ketchupBottleVAO, "Models/KetchupBottle.obj", 0.8f, 0.1f, 0.1f, SAUCE, -2.0f, 0.0f);
-    //addIngredient3D("Mustard", mustardBottleVAO, "Models/MustardBottle.obj", 0.9f, 0.8f, 0.1f, SAUCE, -2.0f, 0.0f);
-    //addIngredient3D("Pickles", picklesVAO, "Models/Pickles.obj", 0.2f, 0.6f, 0.2f, SOLID, -2.0f, 0.01f);
-    //addIngredient3D("Onion", onionVAO, "Models/Onion.obj", 0.95f, 0.9f, 0.85f, SOLID, -2.0f, 0.01f);
-    //addIngredient3D("Lettuce", lettuceVAO, "Models/Lettuce.obj", 0.3f, 0.8f, 0.3f, SOLID, -2.0f, 0.015f);
-    //addIngredient3D("Cheese", cheeseVAO, "Models/Cheese.obj", 1.0f, 0.8f, 0.2f, SOLID, -2.0f, 0.005f);
-    //addIngredient3D("Tomato", tomatoVAO, "Models/Tomato.obj", 0.9f, 0.2f, 0.2f, SOLID, -2.0f, 0.015f);
-    //addIngredient3D("BunTop", bunTopVAO, "Models/TopBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -2.0f, 0.04f);
-    addIngredient3D("BunBot", bunBotVAO, "Models/BottomBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -2.0f, 0.00f);
-    addIngredient3D("Patty", pattyModelVAO, "Models/Patty.obj", 0.5f, 0.25f, 0.0f, SOLID, -2.0f, 0.00f);
-    addIngredient3D("Ketchup", ketchupBottleVAO, "Models/KetchupBottle.obj", 0.8f, 0.1f, 0.1f, SAUCE, -2.0f, 0.0f);
-    addIngredient3D("Mustard", mustardBottleVAO, "Models/MustardBottle.obj", 0.9f, 0.8f, 0.1f, SAUCE, -2.0f, 0.0f);
-    addIngredient3D("Pickles", picklesVAO, "Models/Pickles.obj", 0.2f, 0.6f, 0.2f, SOLID, -2.0f, 0.0f);
-    addIngredient3D("Onion", onionVAO, "Models/Onion.obj", 0.95f, 0.9f, 0.85f, SOLID, -2.0f, 0.0f);
-    addIngredient3D("Lettuce", lettuceVAO, "Models/Lettuce.obj", 0.3f, 0.8f, 0.3f, SOLID, -2.0f, 0.0f);
-    addIngredient3D("Cheese", cheeseVAO, "Models/Cheese.obj", 1.0f, 0.8f, 0.2f, SOLID, -2.0f, 0.00f);
-    addIngredient3D("Tomato", tomatoVAO, "Models/Tomato.obj", 0.9f, 0.2f, 0.2f, SOLID, -2.0f, 0.0f);
-    addIngredient3D("BunTop", bunTopVAO, "Models/TopBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -2.0f, 0.0f);
+    addIngredient3D("BunBot", bunBotVAO, "Models/BottomBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -0.4f, 0.00f);
+    addIngredient3D("Patty", pattyModelVAO, "Models/Patty.obj", 0.5f, 0.25f, 0.0f, SOLID, -0.4f, 0.00f);
+    addIngredient3D("Ketchup", ketchupBottleVAO, "Models/KetchupBottle.obj", 0.8f, 0.1f, 0.1f, SAUCE, -0.16f, 0.0f);
+    addIngredient3D("Mustard", mustardBottleVAO, "Models/MustardBottle.obj", 0.9f, 0.8f, 0.1f, SAUCE, -0.16f, 0.0f);
+    addIngredient3D("Pickles", picklesVAO, "Models/Pickles.obj", 0.2f, 0.6f, 0.2f, SOLID, -0.4f, 0.0f);
+    addIngredient3D("Onion", onionVAO, "Models/Onion.obj", 0.95f, 0.9f, 0.85f, SOLID, -0.4f, 0.0f);
+    addIngredient3D("Lettuce", lettuceVAO, "Models/Lettuce.obj", 0.3f, 0.8f, 0.3f, SOLID, -0.4f, 0.0f);
+    addIngredient3D("Cheese", cheeseVAO, "Models/Cheese.obj", 1.0f, 0.8f, 0.2f, SOLID, -0.4f, 0.00f);
+    addIngredient3D("Tomato", tomatoVAO, "Models/Tomato.obj", 0.9f, 0.2f, 0.2f, SOLID, -0.4f, 0.0f);
+    addIngredient3D("BunTop", bunTopVAO, "Models/TopBun.obj", 0.85f, 0.65f, 0.3f, SOLID, -0.4f, 0.0f);
 
     int currentIngredientIndex = 0;
     std::vector<GameObject> puddles;
@@ -623,6 +618,26 @@ int main()
             std::cout << "Light " << (sceneLight.enabled ? "ENABLED" : "DISABLED") << std::endl;
         }
         plusKeyPressedLastFrame = (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS);
+
+        // --- BACKFACE CULLING TOGGLE (F1 KEY) ---
+        if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS && !f1KeyPressedLastFrame) {
+            backfaceCullingEnabled = !backfaceCullingEnabled;
+            if (backfaceCullingEnabled) {
+                glEnable(GL_CULL_FACE);
+                std::cout << "Backface Culling ENABLED" << std::endl;
+            } else {
+                glDisable(GL_CULL_FACE);
+                std::cout << "Backface Culling DISABLED" << std::endl;
+            }
+        }
+        f1KeyPressedLastFrame = (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS);
+
+        // --- DEPTH TESTING TOGGLE (F2 KEY) ---
+        if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS && !f2KeyPressedLastFrame) {
+            depthTestingEnabled = !depthTestingEnabled;
+            std::cout << "Depth Testing " << (depthTestingEnabled ? "ENABLED" : "DISABLED") << std::endl;
+        }
+        f2KeyPressedLastFrame = (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS);
 
         // --- CAMERA CONTROLS ---
         bool allowCameraMovement = (currentState != MENU && currentState != FINISHED);
@@ -687,7 +702,7 @@ int main()
                 glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
                 rawPatty.y -= speed;
                 // Don't let patty go below grill
-                if (rawPatty.y < -1.0f) rawPatty.y = -1.0f;
+                if (rawPatty.y < -0.19f) rawPatty.y = -0.19f;
             }
 
             // Check 3D collision with invisible cooking zone (not the visible grill)
@@ -851,7 +866,12 @@ int main()
         setLightUniforms(shaderProgram, sceneLight, camera);
         
         // === RENDER 3D SCENE (with depth testing) ===
-        glEnable(GL_DEPTH_TEST);
+        // Apply depth testing state (controlled by F2 key)
+        if (depthTestingEnabled) {
+            glEnable(GL_DEPTH_TEST);
+        } else {
+            glDisable(GL_DEPTH_TEST);
+        }
 
         if (currentState == MENU) {
             // No 3D scene in menu state
