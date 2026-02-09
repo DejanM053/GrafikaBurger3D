@@ -16,6 +16,17 @@
 #include "../Header/Camera.h"
 #include "../Header/Light.h"
 
+/*
+KONTROLE:
+- Strelice + mis: kretanje kamere
+- WASD: kretanje objekata po x/z ravni
+- SHIFT/SPACE: podizanje/spustanje objekata po y osi
+- ENTER: dodavanje kecapa / senfa
+- F1: toggle backface culling
+- F2: toggle depth testing
+- PLUS: toggle light on/off
+*/
+
 // --- KONSTANTE I STANJA ---
 enum GameState {
     MENU,
